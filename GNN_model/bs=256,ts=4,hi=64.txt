@@ -1,0 +1,160 @@
+1. Loading Tensors and Adjacency Matrix...
+2. Normalizing the Spatial Map...
+3. Building DataLoaders (Batch Size: 256)...
+4. Initializing STGCN Model and Optimizer...
+
+--- STARTING TRAINING (150 EPOCHS) ---
+Epoch [  1/150] | Train MSE: 0.063208 | Val MSE: 0.028603
+Epoch [  2/150] | Train MSE: 0.027489 | Val MSE: 0.017274
+Epoch [  3/150] | Train MSE: 0.018161 | Val MSE: 0.018438
+Epoch [  4/150] | Train MSE: 0.015239 | Val MSE: 0.014138
+Epoch [  5/150] | Train MSE: 0.013883 | Val MSE: 0.014969
+Epoch [  6/150] | Train MSE: 0.016014 | Val MSE: 0.013698
+Epoch [  7/150] | Train MSE: 0.013262 | Val MSE: 0.013688
+Epoch [  8/150] | Train MSE: 0.014062 | Val MSE: 0.013074
+Epoch [  9/150] | Train MSE: 0.012587 | Val MSE: 0.012758
+Epoch [ 10/150] | Train MSE: 0.012504 | Val MSE: 0.012997
+Epoch [ 11/150] | Train MSE: 0.013545 | Val MSE: 0.015271
+Epoch [ 12/150] | Train MSE: 0.013114 | Val MSE: 0.012510
+Epoch [ 13/150] | Train MSE: 0.012158 | Val MSE: 0.012233
+Epoch [ 14/150] | Train MSE: 0.012126 | Val MSE: 0.013069
+Epoch [ 15/150] | Train MSE: 0.013116 | Val MSE: 0.012198
+Epoch [ 16/150] | Train MSE: 0.011735 | Val MSE: 0.012020
+Epoch [ 17/150] | Train MSE: 0.011594 | Val MSE: 0.011913
+Epoch [ 18/150] | Train MSE: 0.012428 | Val MSE: 0.014154
+Epoch [ 19/150] | Train MSE: 0.012925 | Val MSE: 0.011975
+Epoch [ 20/150] | Train MSE: 0.011499 | Val MSE: 0.011974
+Epoch [ 21/150] | Train MSE: 0.011668 | Val MSE: 0.012157
+Epoch [ 22/150] | Train MSE: 0.011849 | Val MSE: 0.012622
+Epoch [ 23/150] | Train MSE: 0.012494 | Val MSE: 0.011997
+Epoch [ 24/150] | Train MSE: 0.011430 | Val MSE: 0.011791
+Epoch [ 25/150] | Train MSE: 0.011315 | Val MSE: 0.011908
+Epoch [ 26/150] | Train MSE: 0.011738 | Val MSE: 0.012261
+Epoch [ 27/150] | Train MSE: 0.012103 | Val MSE: 0.012518
+Epoch [ 28/150] | Train MSE: 0.011647 | Val MSE: 0.011873
+Epoch [ 29/150] | Train MSE: 0.011624 | Val MSE: 0.012251
+Epoch [ 30/150] | Train MSE: 0.011763 | Val MSE: 0.012129
+Epoch [ 31/150] | Train MSE: 0.011422 | Val MSE: 0.011866
+Epoch [ 32/150] | Train MSE: 0.011330 | Val MSE: 0.011947
+Epoch [ 33/150] | Train MSE: 0.011375 | Val MSE: 0.012011
+Epoch [ 34/150] | Train MSE: 0.012096 | Val MSE: 0.012731
+Epoch [ 35/150] | Train MSE: 0.011650 | Val MSE: 0.011894
+Epoch [ 36/150] | Train MSE: 0.011366 | Val MSE: 0.011752
+Epoch [ 37/150] | Train MSE: 0.011566 | Val MSE: 0.012271
+Epoch [ 38/150] | Train MSE: 0.011641 | Val MSE: 0.012262
+Epoch [ 39/150] | Train MSE: 0.011630 | Val MSE: 0.012144
+Epoch [ 40/150] | Train MSE: 0.011546 | Val MSE: 0.012048
+Epoch [ 41/150] | Train MSE: 0.011537 | Val MSE: 0.012005
+Epoch [ 42/150] | Train MSE: 0.011417 | Val MSE: 0.011787
+Epoch [ 43/150] | Train MSE: 0.011307 | Val MSE: 0.011614
+Epoch [ 44/150] | Train MSE: 0.011224 | Val MSE: 0.012106
+Epoch [ 45/150] | Train MSE: 0.011477 | Val MSE: 0.012063
+Epoch [ 46/150] | Train MSE: 0.012010 | Val MSE: 0.012841
+Epoch [ 47/150] | Train MSE: 0.011673 | Val MSE: 0.011655
+Epoch [ 48/150] | Train MSE: 0.011100 | Val MSE: 0.011692
+Epoch [ 49/150] | Train MSE: 0.011113 | Val MSE: 0.011611
+Epoch [ 50/150] | Train MSE: 0.011089 | Val MSE: 0.011610
+Epoch [ 51/150] | Train MSE: 0.011220 | Val MSE: 0.012059
+Epoch [ 52/150] | Train MSE: 0.012224 | Val MSE: 0.012766
+Epoch [ 53/150] | Train MSE: 0.011481 | Val MSE: 0.011642
+Epoch [ 54/150] | Train MSE: 0.011066 | Val MSE: 0.011583
+Epoch [ 55/150] | Train MSE: 0.011128 | Val MSE: 0.011805
+Epoch [ 56/150] | Train MSE: 0.011443 | Val MSE: 0.012259
+Epoch [ 57/150] | Train MSE: 0.011613 | Val MSE: 0.011974
+Epoch [ 58/150] | Train MSE: 0.011275 | Val MSE: 0.011591
+Epoch [ 59/150] | Train MSE: 0.011010 | Val MSE: 0.011616
+Epoch [ 60/150] | Train MSE: 0.011072 | Val MSE: 0.011844
+Epoch [ 61/150] | Train MSE: 0.011710 | Val MSE: 0.012990
+Epoch [ 62/150] | Train MSE: 0.012045 | Val MSE: 0.011612
+Epoch [ 63/150] | Train MSE: 0.011002 | Val MSE: 0.011635
+Epoch [ 64/150] | Train MSE: 0.011027 | Val MSE: 0.011583
+Epoch [ 65/150] | Train MSE: 0.010971 | Val MSE: 0.011541
+Epoch [ 66/150] | Train MSE: 0.010969 | Val MSE: 0.011694
+Epoch [ 67/150] | Train MSE: 0.011870 | Val MSE: 0.012884
+Epoch [ 68/150] | Train MSE: 0.011598 | Val MSE: 0.011657
+Epoch [ 69/150] | Train MSE: 0.011001 | Val MSE: 0.011555
+Epoch [ 70/150] | Train MSE: 0.010918 | Val MSE: 0.011514
+Epoch [ 71/150] | Train MSE: 0.011403 | Val MSE: 0.012383
+Epoch [ 72/150] | Train MSE: 0.011251 | Val MSE: 0.011599
+Epoch [ 73/150] | Train MSE: 0.011049 | Val MSE: 0.011607
+Epoch [ 74/150] | Train MSE: 0.011036 | Val MSE: 0.011788
+Epoch [ 75/150] | Train MSE: 0.011356 | Val MSE: 0.011999
+Epoch [ 76/150] | Train MSE: 0.011334 | Val MSE: 0.011712
+Epoch [ 77/150] | Train MSE: 0.011285 | Val MSE: 0.011899
+Epoch [ 78/150] | Train MSE: 0.011023 | Val MSE: 0.011696
+Epoch [ 79/150] | Train MSE: 0.011161 | Val MSE: 0.011689
+Epoch [ 80/150] | Train MSE: 0.011120 | Val MSE: 0.011839
+Epoch [ 81/150] | Train MSE: 0.011457 | Val MSE: 0.012191
+Epoch [ 82/150] | Train MSE: 0.011300 | Val MSE: 0.011616
+Epoch [ 83/150] | Train MSE: 0.011080 | Val MSE: 0.011911
+Epoch [ 84/150] | Train MSE: 0.011051 | Val MSE: 0.011492
+Epoch [ 85/150] | Train MSE: 0.010928 | Val MSE: 0.011683
+Epoch [ 86/150] | Train MSE: 0.011132 | Val MSE: 0.012163
+Epoch [ 87/150] | Train MSE: 0.011755 | Val MSE: 0.011757
+Epoch [ 88/150] | Train MSE: 0.010939 | Val MSE: 0.011452
+Epoch [ 89/150] | Train MSE: 0.010839 | Val MSE: 0.011590
+Epoch [ 90/150] | Train MSE: 0.011197 | Val MSE: 0.011821
+Epoch [ 91/150] | Train MSE: 0.011245 | Val MSE: 0.011744
+Epoch [ 92/150] | Train MSE: 0.010958 | Val MSE: 0.011463
+Epoch [ 93/150] | Train MSE: 0.011269 | Val MSE: 0.012127
+Epoch [ 94/150] | Train MSE: 0.011312 | Val MSE: 0.011552
+Epoch [ 95/150] | Train MSE: 0.010989 | Val MSE: 0.011555
+Epoch [ 96/150] | Train MSE: 0.010969 | Val MSE: 0.011445
+Epoch [ 97/150] | Train MSE: 0.010804 | Val MSE: 0.011416
+Epoch [ 98/150] | Train MSE: 0.010921 | Val MSE: 0.011994
+Epoch [ 99/150] | Train MSE: 0.011527 | Val MSE: 0.012112
+Epoch [100/150] | Train MSE: 0.011231 | Val MSE: 0.011557
+Epoch [101/150] | Train MSE: 0.010982 | Val MSE: 0.011579
+Epoch [102/150] | Train MSE: 0.010886 | Val MSE: 0.011545
+Epoch [103/150] | Train MSE: 0.010924 | Val MSE: 0.011724
+Epoch [104/150] | Train MSE: 0.011251 | Val MSE: 0.012089
+Epoch [105/150] | Train MSE: 0.011115 | Val MSE: 0.011514
+Epoch [106/150] | Train MSE: 0.010878 | Val MSE: 0.011522
+Epoch [107/150] | Train MSE: 0.010838 | Val MSE: 0.011497
+Epoch [108/150] | Train MSE: 0.011349 | Val MSE: 0.011891
+Epoch [109/150] | Train MSE: 0.010999 | Val MSE: 0.011438
+Epoch [110/150] | Train MSE: 0.010898 | Val MSE: 0.011891
+Epoch [111/150] | Train MSE: 0.010996 | Val MSE: 0.011590
+Epoch [112/150] | Train MSE: 0.011319 | Val MSE: 0.011822
+Epoch [113/150] | Train MSE: 0.011099 | Val MSE: 0.011736
+Epoch [114/150] | Train MSE: 0.011034 | Val MSE: 0.011466
+Epoch [115/150] | Train MSE: 0.010760 | Val MSE: 0.011424
+Epoch [116/150] | Train MSE: 0.010788 | Val MSE: 0.011436
+Epoch [117/150] | Train MSE: 0.011291 | Val MSE: 0.012917
+Epoch [118/150] | Train MSE: 0.011245 | Val MSE: 0.011453
+Epoch [119/150] | Train MSE: 0.010891 | Val MSE: 0.011578
+Epoch [120/150] | Train MSE: 0.010783 | Val MSE: 0.011427
+Epoch [121/150] | Train MSE: 0.010749 | Val MSE: 0.011669
+Epoch [122/150] | Train MSE: 0.011009 | Val MSE: 0.012041
+Epoch [123/150] | Train MSE: 0.011766 | Val MSE: 0.012548
+Epoch [124/150] | Train MSE: 0.011008 | Val MSE: 0.011381
+Epoch [125/150] | Train MSE: 0.010747 | Val MSE: 0.011401
+Epoch [126/150] | Train MSE: 0.010751 | Val MSE: 0.011402
+Epoch [127/150] | Train MSE: 0.010842 | Val MSE: 0.011512
+Epoch [128/150] | Train MSE: 0.011000 | Val MSE: 0.011665
+Epoch [129/150] | Train MSE: 0.011075 | Val MSE: 0.011887
+Epoch [130/150] | Train MSE: 0.011313 | Val MSE: 0.011670
+Epoch [131/150] | Train MSE: 0.010952 | Val MSE: 0.011515
+Epoch [132/150] | Train MSE: 0.010796 | Val MSE: 0.011388
+Epoch [133/150] | Train MSE: 0.010915 | Val MSE: 0.012280
+Epoch [134/150] | Train MSE: 0.011369 | Val MSE: 0.011540
+Epoch [135/150] | Train MSE: 0.010869 | Val MSE: 0.011523
+Epoch [136/150] | Train MSE: 0.010820 | Val MSE: 0.011426
+Epoch [137/150] | Train MSE: 0.010944 | Val MSE: 0.011956
+Epoch [138/150] | Train MSE: 0.011184 | Val MSE: 0.011521
+Epoch [139/150] | Train MSE: 0.010889 | Val MSE: 0.011456
+Epoch [140/150] | Train MSE: 0.010725 | Val MSE: 0.011414
+Epoch [141/150] | Train MSE: 0.011092 | Val MSE: 0.012378
+Epoch [142/150] | Train MSE: 0.011347 | Val MSE: 0.011394
+Epoch [143/150] | Train MSE: 0.010783 | Val MSE: 0.011376
+Epoch [144/150] | Train MSE: 0.010728 | Val MSE: 0.011545
+Epoch [145/150] | Train MSE: 0.010736 | Val MSE: 0.011413
+Epoch [146/150] | Train MSE: 0.011088 | Val MSE: 0.011990
+Epoch [147/150] | Train MSE: 0.011406 | Val MSE: 0.011515
+Epoch [148/150] | Train MSE: 0.010780 | Val MSE: 0.011463
+Epoch [149/150] | Train MSE: 0.010718 | Val MSE: 0.011348
+Epoch [150/150] | Train MSE: 0.010845 | Val MSE: 0.011650
+
+--- TRAINING COMPLETE ---
+Best Validation MSE: 0.011348
+The smartest version of the brain has been saved to 'trained_stgcn.pth'
