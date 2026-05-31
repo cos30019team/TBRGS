@@ -33,10 +33,7 @@ try:
     import numpy as np
 except Exception:
     np = None
-from traffic_flow_conv import (
-    flow_to_speed as convert_flow_to_speed,
-    travel_time_seconds,
-)
+
 
 # -----------------------------------------------------------------------------
 # Constants and paths
@@ -55,6 +52,7 @@ NODE_LOOKUP = os.path.join(GNN_DIR, "node_lookup_table.csv")
 ADJ_MATRIX = os.path.join(GNN_DIR, "adjacency_matrix.npy")
 
 LSTM_PREDICTIONS = os.path.join(MODEL_ARTIFACTS_DIR, "predictions_test.csv")
+STGCN_PREDICTIONS = os.path.join(MODEL_ARTIFACTS_DIR, "predictions_stgcn_routing.csv")
 OSM_ROUTE_CACHE = os.path.join(DATA_DIR, "map_osm", "osm_route_cache.json")
 
 
@@ -164,21 +162,6 @@ def valid_time(t: str) -> bool:
         return 0 <= int(h) <= 23 and 0 <= int(m) <= 59
     except Exception:
         return False
-
-
-def normalize_date(value: str) -> str:
-    """
-    Converts GUI date input to YYYY-MM-DD.
-    Returns an empty string when the date is invalid.
-    """
-    try:
-        return datetime.strptime(str(value).strip(), "%Y-%m-%d").strftime("%Y-%m-%d")
-    except Exception:
-        return ""
-
-
-def valid_date(value: str) -> bool:
-    return bool(normalize_date(value))
 
 
 def is_dark_time(t: str) -> bool:
@@ -349,12 +332,14 @@ class ExactMapRepository:
         self.nodes: Dict[str, MapNode] = {}
         self.data_sites: set[str] = set()
         self.graph: Dict[str, List[Tuple[str, float]]] = {}
-        self.flow_cache = None
-        self.lstm_prediction_cache = None
-        self.gru_prediction_cache = None
+        self.flow_cache: Optional[Dict[Tuple[str, int], float]] = None
+        self.lstm_prediction_cache: Optional[Dict[Tuple[str, int], float]] = None
+        self.gru_prediction_cache: Optional[Dict[Tuple[str, int], float]] = None
+        self.stgcn_prediction_cache: Optional[Dict[Tuple[str, int], float]] = None
         self.last_prediction_source = "Historical Avg"
         self.lstm_hits = 0
         self.gru_hits = 0
+        self.custom_hits = 0
         self.historical_hits = 0
 
         # OSM road-following map cache.
@@ -615,63 +600,42 @@ class ExactMapRepository:
     def _merge_gnn_adjacency_edges(self, added: set):
         if np is None or not os.path.exists(ADJ_MATRIX) or not os.path.exists(NODE_LOOKUP):
             return
-
         try:
             lookup_rows = []
-
             with open(NODE_LOOKUP, "r", newline="", encoding="utf-8-sig") as f:
                 for row in csv.DictReader(f):
                     lookup_rows.append((int(row["Node_ID"]), clean_scats(row["SCATS Number"])))
-
-            node_to_scats = {
-                nid: scats
-                for nid, scats in lookup_rows
-                if scats in self.data_sites and scats in self.nodes
-            }
-
+            node_to_scats = {nid: scats for nid, scats in lookup_rows if scats in self.data_sites and scats in self.nodes}
             A = np.load(ADJ_MATRIX)
             rows, cols = np.nonzero(A > 0)
             candidate_pairs = set()
-
             for i, j in zip(rows.tolist(), cols.tolist()):
                 a = node_to_scats.get(i)
                 b = node_to_scats.get(j)
-
                 if not a or not b or a == b:
                     continue
-
                 d_pdf = math.hypot(self.nodes[a].x - self.nodes[b].x, self.nodes[a].y - self.nodes[b].y)
-
                 if d_pdf <= 95:  # avoid huge cross-map edges
-                    candidate_pairs.add(tuple(sorted((a, b))))
-
+                    candidate_pairs.add(tuple(sorted((a,b))))
             # Add only closest GNN-supported links so the route graph is useful but not noisy.
-            sorted_pairs = sorted(candidate_pairs, key=lambda p: self.distance_km(p[0], p[1]))
-
-            for a, b in sorted_pairs[:120]:
-                self._add_edge(a, b, self.distance_km(a, b), added)
-
+            sorted_pairs = sorted(candidate_pairs, key=lambda p: self.distance_km(p[0],p[1]))
+            for a,b in sorted_pairs[:120]:
+                self._add_edge(a,b,self.distance_km(a,b),added)
         except Exception:
             return
 
-    def load_flow_cache(self):
-        """
-        Loads historical traffic flow from data/final_data_processing_output.csv.
-
-        Two lookup levels are stored:
-        1. exact: (SCATS site, YYYY-MM-DD, hour)
-        2. hourly: (SCATS site, hour), used as fallback when the chosen date is unavailable
-
-        This makes the GUI date input meaningful while still keeping a safe fallback.
-        """
+        def load_flow_cache(self):
+            """
+            Loads historical average hourly traffic flow from data/final_data_processing_output.csv.
+            Cache key is (SCATS site, hour).
+            """
         if self.flow_cache is not None:
             return
 
-        exact_totals = {}
-        hourly_totals = {}
+        totals: Dict[Tuple[str, int], List[float]] = {}
 
         if not os.path.exists(PROCESSED_DATA):
-            self.flow_cache = {"exact": {}, "hourly": {}}
+            self.flow_cache = {}
             return
 
         with open(PROCESSED_DATA, "r", newline="", encoding="utf-8-sig") as f:
@@ -689,24 +653,50 @@ class ExactMapRepository:
                 except Exception:
                     continue
 
-                date_key = normalize_date(row.get("Date_Base") or str(row.get("Datetime", ""))[:10])
-
-                if date_key:
-                    exact_totals.setdefault((sid, date_key, hour), []).append(vol)
-
-                hourly_totals.setdefault((sid, hour), []).append(vol)
+                totals.setdefault((sid, hour), []).append(vol)
 
         self.flow_cache = {
-            "exact": {
-                key: sum(values) / len(values)
-                for key, values in exact_totals.items()
-                if values
-            },
-            "hourly": {
-                key: sum(values) / len(values)
-                for key, values in hourly_totals.items()
-                if values
-            },
+            key: sum(values) / len(values)
+            for key, values in totals.items()
+            if values
+        }
+
+
+    def load_flow_cache(self):
+        """
+        Loads historical average hourly traffic flow from data/final_data_processing_output.csv.
+        Cache key is (SCATS site, hour).
+        """
+        if self.flow_cache is not None:
+            return
+
+        totals = {}
+
+        if not os.path.exists(PROCESSED_DATA):
+            self.flow_cache = {}
+            return
+
+        with open(PROCESSED_DATA, "r", newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+
+            for row in reader:
+                sid = clean_scats(row.get("SCATS Number"))
+
+                if sid not in self.data_sites:
+                    continue
+
+                try:
+                    hour = int(float(row.get("Hour", 0)))
+                    vol = float(row.get("Hourly_Volume") or row.get("Volume") or 0)
+                except Exception:
+                    continue
+
+                totals.setdefault((sid, hour), []).append(vol)
+
+        self.flow_cache = {
+            key: sum(values) / len(values)
+            for key, values in totals.items()
+            if values
         }
 
     def load_lstm_prediction_cache(self):
@@ -714,38 +704,21 @@ class ExactMapRepository:
         Loads saved LSTM 15-minute predictions from:
         models/artifacts_person1/predictions_test.csv
 
-        The cache stores exact date/hour predictions plus hourly fallback values.
+        step_index_0to95 represents 15-minute intervals.
+        Hour is calculated as step_index // 4.
+
+        The route engine needs hourly flow:
+        hourly_flow = pred_lstm_veh_15min * 4
         """
         if self.lstm_prediction_cache is not None:
             return
 
-        self.lstm_prediction_cache = self._load_model_prediction_cache("pred_lstm_veh_15min", "LSTM")
-
-    def load_gru_prediction_cache(self):
-        """
-        Loads saved GRU 15-minute predictions from:
-        models/artifacts_person1/predictions_test.csv
-
-        The cache stores exact date/hour predictions plus hourly fallback values.
-        """
-        if self.gru_prediction_cache is not None:
-            return
-
-        self.gru_prediction_cache = self._load_model_prediction_cache("pred_gru_veh_15min", "GRU")
-
-    def _load_model_prediction_cache(self, column_name: str, label: str):
-        """
-        Shared prediction loader for LSTM and GRU.
-
-        predictions_test.csv contains 15-minute predictions. The route engine needs
-        hourly flow, so each 15-minute value is multiplied by 4.
-        """
-        exact_totals = {}
-        hourly_totals = {}
+        predictions = {}
 
         if not os.path.exists(LSTM_PREDICTIONS):
-            print(f"{label} prediction file not found:", LSTM_PREDICTIONS)
-            return {"exact": {}, "hourly": {}}
+            print("LSTM prediction file not found:", LSTM_PREDICTIONS)
+            self.lstm_prediction_cache = {}
+            return
 
         try:
             with open(LSTM_PREDICTIONS, "r", newline="", encoding="utf-8-sig") as f:
@@ -754,73 +727,144 @@ class ExactMapRepository:
                 for row in reader:
                     sid = clean_scats(row.get("scats_site", ""))
 
-                    if not sid or column_name not in row:
+                    try:
+                        step_index = int(float(row.get("step_index_0to95", 0)))
+                        hour = max(0, min(23, step_index // 4))
+                        pred_15min = float(row.get("pred_lstm_veh_15min", 0))
+                        pred_hourly = max(0.0, pred_15min * 4.0)
+                    except Exception:
+                        continue
+
+                    predictions.setdefault((sid, hour), []).append(pred_hourly)
+
+            self.lstm_prediction_cache = {}
+
+            for key, values in predictions.items():
+                if values:
+                    self.lstm_prediction_cache[key] = sum(values) / len(values)
+
+            # LSTM prediction cache loaded successfully.
+
+        except Exception as exc:
+            print("Could not load LSTM prediction cache:", exc)
+            self.lstm_prediction_cache = {}
+
+
+    def load_gru_prediction_cache(self):
+        """
+        Loads saved GRU 15-minute predictions from:
+        models/artifacts_person1/predictions_test.csv
+
+        The prediction file uses step_index_0to95, where every step is 15 minutes.
+        Hour is calculated as step_index // 4.
+
+        The route engine needs hourly flow:
+        hourly_flow = pred_gru_veh_15min * 4
+        """
+        if self.gru_prediction_cache is not None:
+            return
+
+        predictions = {}
+
+        if not os.path.exists(LSTM_PREDICTIONS):
+            print("Prediction file not found:", LSTM_PREDICTIONS)
+            self.gru_prediction_cache = {}
+            return
+
+        try:
+            with open(LSTM_PREDICTIONS, "r", newline="", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+
+                for row in reader:
+                    sid = clean_scats(row.get("scats_site", ""))
+
+                    if "pred_gru_veh_15min" not in row:
                         continue
 
                     try:
                         step_index = int(float(row.get("step_index_0to95", 0)))
                         hour = max(0, min(23, step_index // 4))
-                        pred_15min = float(row.get(column_name, 0))
+                        pred_15min = float(row.get("pred_gru_veh_15min", 0))
                         pred_hourly = max(0.0, pred_15min * 4.0)
                     except Exception:
                         continue
 
-                    date_key = normalize_date(str(row.get("date", ""))[:10])
+                    predictions.setdefault((sid, hour), []).append(pred_hourly)
 
-                    if date_key:
-                        exact_totals.setdefault((sid, date_key, hour), []).append(pred_hourly)
+            self.gru_prediction_cache = {}
 
-                    hourly_totals.setdefault((sid, hour), []).append(pred_hourly)
-
-            return {
-                "exact": {
-                    key: sum(values) / len(values)
-                    for key, values in exact_totals.items()
-                    if values
-                },
-                "hourly": {
-                    key: sum(values) / len(values)
-                    for key, values in hourly_totals.items()
-                    if values
-                },
-            }
+            for key, values in predictions.items():
+                if values:
+                    self.gru_prediction_cache[key] = sum(values) / len(values)
 
         except Exception as exc:
-            print(f"Could not load {label} prediction cache:", exc)
-            return {"exact": {}, "hourly": {}}
+            print("Could not load GRU prediction cache:", exc)
+            self.gru_prediction_cache = {}
+
+    def load_stgcn_prediction_cache(self):
+        """
+        Loads STGCN hourly flow predictions from:
+        models/artifacts_person1/predictions_stgcn_routing.csv
+
+        Generated by:
+        GNN_model/export_routing_predictions.py
+
+        Cache key is (SCATS site, hour), matching LSTM/GRU routing lookups.
+        """
+        if self.stgcn_prediction_cache is not None:
+            return
+
+        predictions: Dict[Tuple[str, int], float] = {}
+
+        if not os.path.exists(STGCN_PREDICTIONS):
+            print("STGCN prediction file not found:", STGCN_PREDICTIONS)
+            self.stgcn_prediction_cache = {}
+            return
+
+        try:
+            with open(STGCN_PREDICTIONS, "r", newline="", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+
+                for row in reader:
+                    sid = clean_scats(row.get("scats_site", ""))
+
+                    try:
+                        hour = max(0, min(23, int(float(row.get("hour", 0)))))
+                        pred_hourly = max(0.0, float(row.get("pred_stgcn_hourly", 0)))
+                    except Exception:
+                        continue
+
+                    predictions[(sid, hour)] = pred_hourly
+
+            self.stgcn_prediction_cache = predictions
+        except Exception as exc:
+            print("Could not load STGCN prediction cache:", exc)
+            self.stgcn_prediction_cache = {}
 
     def flow_to_speed(self, flow: float) -> float:
         """
-        Converts hourly traffic flow to speed using traffic_flow_conv.py.
+        Converts hourly traffic flow to speed using the assignment formula:
+        flow = -1.4648375 * speed^2 + 93.75 * speed
+
+        Uses the under-capacity branch and caps speed at 60 km/h.
         """
-        return convert_flow_to_speed(flow)
+        a = -1.4648375
+        b = 93.75
+        c = -max(0.0, float(flow))
 
-    def _lookup_cache_flow(self, cache, scats: str, date_key: str, hour: int):
-        """
-        Looks up exact date/hour first, then same-site hourly fallback, then 08:00 fallback.
-        """
-        if not cache:
-            return None
+        disc = b * b - 4 * a * c
 
-        exact = cache.get("exact", {})
-        hourly = cache.get("hourly", {})
+        if disc < 0:
+            return 32.0
 
-        if date_key:
-            value = exact.get((scats, date_key, hour))
-            if value is not None:
-                return float(value)
+        root1 = (-b + math.sqrt(disc)) / (2 * a)
+        root2 = (-b - math.sqrt(disc)) / (2 * a)
 
-        value = hourly.get((scats, hour))
+        candidates = [r for r in (root1, root2) if r > 0]
+        speed = max(candidates) if candidates else 32.0
 
-        if value is not None:
-            return float(value)
+        return max(5.0, min(60.0, speed))
 
-        value = hourly.get((scats, 8))
-
-        if value is not None:
-            return float(value)
-
-        return None
 
     def predict_flow(self, scats: str, date_text: str, time_text: str, model_name: str) -> float:
         """
@@ -831,41 +875,48 @@ class ExactMapRepository:
         - then LSTM
         - then Historical Avg
 
-        LSTM and GRU:
-        - use exact date/hour predictions when available
-        - otherwise fall back to same-site hourly prediction averages
+        LSTM:
+        - uses pred_lstm_veh_15min when available
 
-        Historical Avg:
-        - uses exact Date_Base/hour values when available
-        - otherwise falls back to same-site hourly average
+        GRU:
+        - uses pred_gru_veh_15min when available
+
+        Custom (STGCN):
+        - uses pred_stgcn_hourly from predictions_stgcn_routing.csv when available
         """
         self.load_flow_cache()
 
         hour = int(time_text.split(":")[0]) if valid_time(time_text) else 8
-        date_key = normalize_date(date_text)
         model = str(model_name or "").strip().lower()
-        scats = clean_scats(scats)
 
         def historical_fallback() -> float:
             self.historical_hits += 1
             self.last_prediction_source = "Historical Avg"
 
-            value = self._lookup_cache_flow(self.flow_cache, scats, date_key, hour)
-
-            if value is not None:
-                return value
+            if self.flow_cache:
+                return float(
+                    self.flow_cache.get(
+                        (scats, hour),
+                        self.flow_cache.get((scats, 8), 600.0)
+                    )
+                )
 
             return 600.0
 
         def try_gru() -> Optional[float]:
             try:
                 self.load_gru_prediction_cache()
-                value = self._lookup_cache_flow(self.gru_prediction_cache, scats, date_key, hour)
 
-                if value is not None:
-                    self.gru_hits += 1
-                    self.last_prediction_source = "GRU"
-                    return value
+                if self.gru_prediction_cache:
+                    value = self.gru_prediction_cache.get((scats, hour))
+
+                    if value is None:
+                        value = self.gru_prediction_cache.get((scats, 8))
+
+                    if value is not None:
+                        self.gru_hits += 1
+                        self.last_prediction_source = "GRU"
+                        return float(value)
 
             except Exception as exc:
                 print("GRU prediction failed, using fallback instead:", exc)
@@ -875,15 +926,40 @@ class ExactMapRepository:
         def try_lstm() -> Optional[float]:
             try:
                 self.load_lstm_prediction_cache()
-                value = self._lookup_cache_flow(self.lstm_prediction_cache, scats, date_key, hour)
 
-                if value is not None:
-                    self.lstm_hits += 1
-                    self.last_prediction_source = "LSTM"
-                    return value
+                if self.lstm_prediction_cache:
+                    value = self.lstm_prediction_cache.get((scats, hour))
+
+                    if value is None:
+                        value = self.lstm_prediction_cache.get((scats, 8))
+
+                    if value is not None:
+                        self.lstm_hits += 1
+                        self.last_prediction_source = "LSTM"
+                        return float(value)
 
             except Exception as exc:
                 print("LSTM prediction failed, using fallback instead:", exc)
+
+            return None
+
+        def try_custom() -> Optional[float]:
+            try:
+                self.load_stgcn_prediction_cache()
+
+                if self.stgcn_prediction_cache:
+                    value = self.stgcn_prediction_cache.get((scats, hour))
+
+                    if value is None:
+                        value = self.stgcn_prediction_cache.get((scats, 8))
+
+                    if value is not None:
+                        self.custom_hits += 1
+                        self.last_prediction_source = "Custom"
+                        return float(value)
+
+            except Exception as exc:
+                print("Custom (STGCN) prediction failed, using fallback instead:", exc)
 
             return None
 
@@ -897,6 +973,11 @@ class ExactMapRepository:
             if value is not None:
                 return value
 
+        elif model == "custom":
+            value = try_custom()
+            if value is not None:
+                return value
+
         elif model == "best available":
             value = try_gru()
             if value is not None:
@@ -906,24 +987,20 @@ class ExactMapRepository:
             if value is not None:
                 return value
 
-        # Custom and Historical Avg currently use historical fallback.
+        # Historical Avg and missing ML predictions use historical fallback.
         return historical_fallback()
 
     def edge_time_minutes(self, src: str, dst: str, km: float, date_text: str, time_text: str, model: str) -> Tuple[float, float]:
-        flow_hourly = self.predict_flow(src, date_text, time_text, model)
-
-        # traffic_flow_conv.travel_time_seconds expects 15-minute flow,
-        # while predict_flow returns hourly flow for route costing.
-        flow_15min = flow_hourly / 4.0
-        distance_m = km * 1000.0
-        travel = travel_time_seconds(distance_m, flow_15min) / 60.0
-
+        flow = self.predict_flow(src, date_text, time_text, model)
+        speed = self.flow_to_speed(flow)
+        travel = (km / speed) * 60.0
         delay = 0.5  # 30 seconds per controlled intersection
-        return travel + delay, flow_hourly
+        return travel + delay, flow
 
     def top_k_routes(self, origin: str, dest: str, date_text: str, time_text: str, model: str, k: int) -> List[dict]:
         self.lstm_hits = 0
         self.gru_hits = 0
+        self.custom_hits = 0
         self.historical_hits = 0
         self.last_prediction_source = "Historical Avg"
         origin = clean_scats(origin)
@@ -1356,10 +1433,6 @@ class TBRGSGUI:
             self.status = f"Destination {d} is not one of the dataset SCATS sites from node_lookup_table.csv."
             self.status_type = "danger"
             return
-        if not valid_date(self.date.value):
-            self.status = "Prediction date must be YYYY-MM-DD, for example 2006-10-01."
-            self.status_type = "danger"
-            return
         if not valid_time(self.time.value):
             self.status = "Prediction time must be HH:MM, for example 08:00 or 17:30."
             self.status_type = "danger"
@@ -1377,6 +1450,9 @@ class TBRGSGUI:
             if self.repo.lstm_hits > 0:
                 parts.append(f"{self.repo.lstm_hits} LSTM")
 
+            if self.repo.custom_hits > 0:
+                parts.append(f"{self.repo.custom_hits} Custom")
+
             if self.repo.historical_hits > 0:
                 parts.append(f"{self.repo.historical_hits} Historical Avg fallback")
 
@@ -1385,7 +1461,7 @@ class TBRGSGUI:
             else:
                 source = "Historical Avg"
 
-            self.status = f"Found {len(self.routes)} route(s) for {self.date.value} {self.time.value} using {self.model.selected} model source: {source}. Select a result card to highlight it."
+            self.status = f"Found {len(self.routes)} route(s) using {source} traffic flow. Select a result card to highlight it on the road network map."
             self.status_type = "success"
         else:
             self.status = "No route found. Check origin/destination or route graph connectivity."

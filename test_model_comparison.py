@@ -17,6 +17,7 @@ def run_model(model):
     print("MODEL:", model)
     print("GRU hits:", repo.gru_hits)
     print("LSTM hits:", repo.lstm_hits)
+    print("Custom hits:", repo.custom_hits)
     print("Historical fallback hits:", repo.historical_hits)
 
     for i, r in enumerate(routes, start=1):
@@ -30,7 +31,7 @@ def run_model(model):
 
 
 def main():
-    for model in ["Best Available", "GRU", "LSTM", "Historical Avg"]:
+    for model in ["Best Available", "GRU", "LSTM", "Custom", "Historical Avg"]:
         run_model(model)
 
 
