@@ -1,0 +1,15 @@
+pygame
+numpy
+pandas
+matplotlib
+scikit-learn
+joblib
+torch
+networkx
+pillow
+openpyxl
+xlrd
+osmnx
+shapely
+geopandas
+requests
